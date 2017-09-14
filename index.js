@@ -1,65 +1,118 @@
 "use strict";
 
 var Alexa = require("alexa-sdk");
+var questions = require("./question");
+
+var DECK_LENGTH = 20; //number of flashcards in a deck
 
 var states = { //this could be a later one...
   GUESSMODE: '_GUESSMODE', //User is trying to guess answer
   STARTMODE: '_STARTMODE' //Prompt the user to start or restart the game
 }
 
+var dialogue = {
+  "QUESTIONS": questions.FlashcardsHelper.flashcards.cards.[].question //what is this structure?,
+  "HELP_MESSAGE": "I will ask you a question. Respond with the correct answer.",
+  "REPEAT_QUESTION_MESSAGE": "To repeat the last question, say, repeat.",
+  "ASK_MESSAGE_START": "What do you want to do today?.",
+  "NEW_GAME_MESSAGE": "Welcome to Flashcards.",
+  'ANSWER_CORRECT_MESSAGE': 'correct. ',
+  'ANSWER_WRONG_MESSAGE': 'wrong. ',
+  'CORRECT_ANSWER_MESSAGE': 'The correct answer is %s: %s. ',
+  'ANSWER_IS_MESSAGE': 'That answer is ',
+  'TELL_QUESTION_MESSAGE': 'Question %s. %s ',
+  "PROGRESS_MESSAGE": "You have answered %s out of %s questions correct.",
+  "CONTINUE_MESSAGE": "Would you like to continue?"
+};
+
 // The handlers object tells Alexa how to handle various actions
 var newSessionHandlers = {
 	"NewSession": function() {
-		if(Object.keys(this.attributes).length === 0) { //not sure what this is
-			this.attributes["RubyFlashcardsCorrect"] = 0; //do we do this for each language?
-		}
-		this.handler.state = states.STARTMODE;
-		this.emit(":ask", "Hello Zoe, welcome to Flashcards.", "Say yes to practice or no to quit.");
-	},
+    "LaunchRequest": function() {
+      this.handler.state = states.GUESSMODE;
+      this.emitWithState('StartGame', true);
+    }
 
-	"AMAZON.StopIntent": function() {
-		this.emit(':tell', "Goodbye!");
-	},
-	"AMAZON.CancelIntent": function() {
-		this.emit(':tell', "Goodbye!");
-	},
-	'SessionEndedRequest': function () {
-			console.log('session ended!');
-			//this.attributes['endedSessionCount'] += 1;
-			this.emit(":tell", "Goodbye!");
-	}
+function populateGameQuestions(questions) {
+  var gameQuestions = [];
+  var indexList = [];
+  var index = questions.length;
+
+  if (DECK_LENGTH > index){
+    throw new Error('Invalid Deck Length.') //not sure if this is needed. do users in the trivia game dictate how many they want to do?
+  }
+
+  for (var i = 0; i < questions.length; i++) {
+    indexList.push(i);
+  }
+  // Pick DECK_LENGTH random questions from the list to ask the user, make sure there are no repeats.
+  for (var j = 0; j < DECK_LENGTH; j++){
+    var rand = Math.floor(Math.random() * index);
+    index -= 1;
+
+    var temp = indexList[index];
+    indexList[index] = indexList[rand];
+    indexList[rand] = temp; //like, the temporary index related to the question being asked?
+    gameQuestions.push(indexList[index]);
+  }
+
+  return gameQuestions;
+}
+	// 	if(Object.keys(this.attributes).length === 0) { //not sure what this is
+	// 		this.attributes["RubyFlashcardsCorrect"] = 0; //do we do this for each language? //this is DynamoDB related
+	// 	}
+	// 	this.handler.state = states.STARTMODE;
+	// 	this.emit(":ask", "Hello Zoe, Welcome to Flashcards." );
+	// },
+
+	// "AMAZON.StopIntent": function() {
+	// 	this.emit(':tell', "Goodbye!");
+	// },
+	// "AMAZON.CancelIntent": function() {
+	// 	this.emit(':tell', "Goodbye!");
+	// },
+	// 'SessionEndedRequest': function () {
+	// 		console.log('session ended!');
+	// 		//this.attributes['endedSessionCount'] += 1;
+	// 		this.emit(":tell", "Goodbye!");
+	// }
 };
 
 var startGameHandlers = Alexa.CreateStateHandler(states.STARTMODE, { //most of this is built-in intents
 	"NewSession":function () {
 		this.emit('NewSession'); //Uses the handler in newSessionHadlers above
 	},
-	"AMAZON.HelpIntent": function() { //this would have to be added. durrr.
-		var message = "Would you like to practice some flashcards?";
-		this.emit(':ask, message');
-	},
-	'AMAZON.NoIntent': function() {
-		console.log("NOINTENT");
-		this.emit(':tell', 'Ok, see you next time!');
-	},
-	"AMAZON.StopIntent": function() {
-		console.log("STOPINTENT");
-		this.emit(':tell', "Goodbye!");
-	},
-	"AMAZON.CancelIntent": function() {
-		console.log("CANCELINTENT");
-		this.emit(':tell', "Goodbye!");
-	},
-	'SessionEndedRequest': function () {
-			console.log("SESSIONENDEDREQUEST");
-			//this.attributes['endedSessionCount'] += 1;
-			this.emit(':tell', "Goodbye!");
-	},
-	'Unhandled': function() {
-			console.log("UNHANDLED");
-			var message = 'Say yes to continue, or no to end the session.';
-			this.emit(':ask', message, message);
-	}
+
+  "ProgressIntent": function() {
+    	var message = "You have completed eleven of twenty Ruby flashcards.", "Would you like to continue?";
+  		this.emit(':ask, message');
+  },
+	// "AMAZON.HelpIntent": function() { //this would have to be added. durrr.
+	// 	var message = "Would you like to practice some flashcards?";
+	// 	this.emit(':ask, message');
+	// },
+	// 'AMAZON.NoIntent': function() {
+	// 	console.log("NOINTENT");
+	// 	this.emit(':tell', 'Ok, see you next time!');
+	// },
+	// "AMAZON.StopIntent": function() {
+	// 	console.log("STOPINTENT");
+	// 	this.emit(':tell', "Goodbye!");
+	// },
+	// "AMAZON.CancelIntent": function() {
+	// 	console.log("CANCELINTENT");
+	// 	this.emit(':tell', "Goodbye!");
+	// },
+	// 'SessionEndedRequest': function () {
+	// 		console.log("SESSIONENDEDREQUEST");
+	// 		//this.attributes['endedSessionCount'] += 1;
+	// 		this.emit(':tell', "Goodbye!");
+	// },
+	// 'Unhandled': function() {
+	// 		console.log("UNHANDLED");
+	// 		var message = 'Say yes to continue, or no to end the session.';
+	// 		this.emit(':ask', message, message);
+	// }
 });
 
 var guessModeHandlers = Alexa.CreateStateHandler(states.GUESSMODE, {
@@ -69,7 +122,8 @@ var guessModeHandlers = Alexa.CreateStateHandler(states.GUESSMODE, {
 	},
 
 	"GuessIntent": function() {
-		var guess = parseStr(this.event.request.intent.slots.answer.value); //how to modify for flashcards?
+    this.emit() //How do you find the length of a string in Ruby?
+    var guess = parseStr()//this.event.request.intent.slots.answer.value); //how to modify for flashcards?
 		var answer = this.attributes["answer"]; //how to modify for flashcards?
 		console.log("NAME guessed:" + guess);
 
